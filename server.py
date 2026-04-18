@@ -1,14 +1,14 @@
 """
 RMV Merch Shop — Cloud Server
-Läuft auf Railway.app — kein lokaler Laptop nötig, immer online.
-Einstellungen: Umgebungsvariablen im Railway-Dashboard eintragen.
+Läuft auf Render.com — kein lokaler Laptop nötig, immer online.
+Einstellungen: Umgebungsvariablen im Render-Dashboard eintragen.
 """
 
 import os, json, io
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ── Konfiguration (aus Railway-Umgebungsvariablen) ────────────
+# ── Konfiguration (aus Render-Umgebungsvariablen) ─────────────────
 PORT              = int(os.environ.get("PORT", 8787))
 SMTP_USER         = os.environ.get("EMAIL_ADRESSE", "")
 SMTP_PASSWORD     = os.environ.get("EMAIL_PASSWORT", "")
@@ -20,7 +20,7 @@ SMTP_SERVER = "smtp-mail.outlook.com"
 SMTP_PORT   = 587
 
 
-# ── In-Memory-Zustand ─────────────────────────────────────────
+# ── In-Memory-Zustand ─────────────────────────────────
 # Lagerbestand — wird beim Server-Start einmalig geladen und
 # dann im Arbeitsspeicher aktualisiert. Zurücksetzen bei Neustart
 # ist für diesen kleinen Shop akzeptabel (Emails sind das Backup).
@@ -34,6 +34,7 @@ INVENTORY = {
     # Drop 2 — Auf Bestellung (unbegrenzt)
     "sweater_drop2_naturalraw": {"available": "∞", "status": "Auf Bestellung","sizes": []},
     "sweater_drop2_violet":     {"available": "∞", "status": "Auf Bestellung","sizes": []},
+    "sweater_drop2_khaki":      {"available": "∞", "status": "Auf Bestellung","sizes": []},
     "tshirt_drop2_naturalraw":  {"available": "∞", "status": "Auf Bestellung","sizes": []},
 }
 
@@ -41,7 +42,7 @@ PENDING_ORDERS = {}   # stripe_session_id → order-dict (in-memory)
 NEXT_INV_NUM   = [59] # Liste damit Änderung in Funktionen möglich ist
 
 
-# ── HTTP-Handler ──────────────────────────────────────────────
+# ── HTTP-Handler ────────────────────────────────────────────
 
 class OrderHandler(BaseHTTPRequestHandler):
 
@@ -62,7 +63,7 @@ class OrderHandler(BaseHTTPRequestHandler):
         if self.path == "/inventory":
             self._respond(200, INVENTORY)
         else:
-            self._respond(200, {"status": "RMV Merch Shop Server läuft ✓", "version": "2.0-cloud"})
+            self._respond(200, {"status": "RMV Merch Shop Server läuft ✓", "version": "2.1-render"})
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -103,14 +104,13 @@ class OrderHandler(BaseHTTPRequestHandler):
 
 def create_checkout_session(order):
     if not STRIPE_SECRET_KEY:
-        raise RuntimeError("STRIPE_SECRET_KEY nicht gesetzt (Railway-Umgebungsvariablen)")
+        raise RuntimeError("STRIPE_SECRET_KEY nicht gesetzt (Render-Umgebungsvariablen)")
     import stripe
     stripe.api_key = STRIPE_SECRET_KEY
 
     gesamt_cent = int(round(float(order.get("gesamt", 0)) * 100))
     prod_label  = f"{order.get('produkt','')} · {order.get('farbe','')} · Gr. {order.get('groesse','')}"
 
-    # Shop-URL: zuerst aus Order (vom Browser), dann aus Env-Var, dann Fallback
     shop_url = order.pop("shopUrl", None) or SHOP_URL or "http://localhost:8080"
 
     session = stripe.checkout.Session.create(
@@ -129,7 +129,6 @@ def create_checkout_session(order):
         cancel_url=shop_url + "?cancelled=1",
     )
 
-    # Bestellung im Arbeitsspeicher merken bis Zahlung bestätigt
     PENDING_ORDERS[session.id] = order
     print(f"  ✓ Stripe Session: {session.id}")
     return {"checkoutUrl": session.url}
@@ -171,7 +170,6 @@ def process_order(order, paid=False):
     NEXT_INV_NUM[0] += 1
     inv_str = str(inv_num).zfill(3)
 
-    # Lagerbestand aktualisieren (nur Drop 1)
     if order.get("drop", "") == "Drop 1":
         _update_inventory(order)
 
@@ -241,29 +239,29 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
 
                     prod_line = f"RMV Merch — {prod} · {farbe} · {drop} · Gr. {groesse}"
                     versand_zeile = (
-                        f"inkl. Versand DHL: {versand:.2f} \u20ac"
+                        f"inkl. Versand DHL: {versand:.2f} €"
                         if versand > 0 else "Abholung beim Run Club"
                     )
                     zahlung = (
-                        f"Bezahlt am {today_str} \u2713" if paid
-                        else f"F\u00e4llig am {due_str}"
+                        f"Bezahlt am {today_str} ✓" if paid
+                        else f"Fällig am {due_str}"
                     )
 
                     for old, new in [
-                        ("14. M\u00e4rz 2026",                                   datum),
+                        ("14. März 2026",                                   datum),
                         ("011",                                                   inv_str),
                         ("xx",                                                    vorname),
-                        ("xx stra\u00dfe",                                        f"{nachname} {strasse}"),
-                        ("M\u00fcnchen",                                          f"{plz} {stadt}"),
-                        ("F\u00e4llig am 03.04.2026 ",                           zahlung + " "),
+                        ("xx straße",                                        f"{nachname} {strasse}"),
+                        ("München",                                          f"{plz} {stadt}"),
+                        ("Fällig am 03.04.2026 ",                           zahlung + " "),
                         ("01",                                                    anzahl.zfill(2)),
-                        ("RMV Cycling Retreat \u2013 Rider Package (07.\u201310. Mai 2026)", prod_line),
+                        ("RMV Cycling Retreat – Rider Package (07.–10. Mai 2026)", prod_line),
                         ("379 Euro ",                                             f"{preis} Euro "),
                         ("Teilnahme am Results May Vary Cycling Retreat inkl.:", versand_zeile),
-                        ("Unterkunft (3 N\u00e4chte)",                            ""),
-                        ("Verpflegung (Brunch, Dinner, Snacks &amp; Drinks \u2013 au\u00dfer Lunch w\u00e4hrend der Touren)", ""),
+                        ("Unterkunft (3 Nächte)",                            ""),
+                        ("Verpflegung (Brunch, Dinner, Snacks &amp; Drinks – außer Lunch während der Touren)", ""),
                         ("Organisation &amp; Betreuung",                          ""),
-                        ("Gef\u00fchrte Rennrad-Touren / gemeinsame Rides",       ""),
+                        ("Geführte Rennrad-Touren / gemeinsame Rides",       ""),
                         ("Yoga / Mobility Sessions",                              ""),
                         ("Community-Programm (DJ, gemeinsame Abende etc.)",       ""),
                         ("Goodie Bag",                                            ""),
@@ -274,7 +272,7 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
                     data = xml.encode("utf-8")
                 zout.writestr(item, data)
 
-        print(f"  ✓ DOCX Rechnung generiert: {inv_str}_Merch_{order.get('vorname','')}{order.get('nachname','')}_2026.docx")
+        print(f"  ✓ DOCX Rechnung generiert")
         return buf_out.getvalue()
     except Exception as e:
         print(f"  ⚠  DOCX Generierung fehlgeschlagen: {e}")
@@ -282,7 +280,7 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
         return None
 
 
-# ── Emails ────────────────────────────────────────────────────
+# ── Emails ──────────────────────────────────────────────────────
 
 def send_emails(order, inv_str, paid=False):
     if not SMTP_PASSWORD:
@@ -313,9 +311,8 @@ def send_emails(order, inv_str, paid=False):
             srv.ehlo(); srv.starttls(); srv.login(SMTP_USER, SMTP_PASSWORD)
             srv.send_message(msg)
 
-    # ── 1. Team-Benachrichtigung (Plaintext) ──────────────────
     liefertext = f"Run Club am {runclub}" if runclub else f"Versand nach {order.get('strasse','')}, {order.get('plz','')} {order.get('stadt','')}"
-    team_body = f"""🛍️  NEUE BESTELLUNG — RMV Merch Shop
+    team_body = f"""🛒  NEUE BESTELLUNG — RMV Merch Shop
 {'='*45}
 
 Rechnung Nr.:  {inv_str}
@@ -350,7 +347,6 @@ LIEFERUNG:  {liefertext}
     except Exception as e:
         print(f"  ⚠  Team-Email fehlgeschlagen: {e}")
 
-    # ── 2. Kunden-Bestätigung + DOCX-Rechnung ────────────────────
     if not kunde_email:
         return True
 
@@ -364,9 +360,8 @@ LIEFERUNG:  {liefertext}
     msg2 = MIMEMultipart()
     msg2["From"]    = SMTP_USER
     msg2["To"]      = kunde_email
-    msg2["Subject"] = f"Deine RMV Merch Rechnung Nr. {inv_str} 🛍️"
+    msg2["Subject"] = f"Deine RMV Merch Rechnung Nr. {inv_str} 🛒"
 
-    # Kunden-Bestätigungs-Body (plain text)
     confirm_body = f"""Hej {vorname}! 👋
 
 Danke für deine Bestellung — im Anhang findest du deine Rechnung.
@@ -382,7 +377,6 @@ results.mv@outlook.com
 """
     msg2.attach(MIMEText(confirm_body, "plain", "utf-8"))
 
-    # DOCX Rechnung als Anhang
     docx_bytes = _generate_invoice_docx(order, inv_str, paid, today_str, due_str)
     if docx_bytes:
         from email.mime.base import MIMEBase
@@ -403,7 +397,7 @@ results.mv@outlook.com
     return True
 
 
-# ── Start ─────────────────────────────────────────────────────
+# ── Start ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     missing = []
@@ -411,17 +405,10 @@ if __name__ == "__main__":
     if not SMTP_PASSWORD: missing.append("EMAIL_PASSWORT")
     if not STRIPE_SECRET_KEY: missing.append("STRIPE_SECRET_KEY")
 
-    print(f"""
-╔══════════════════════════════════════════╗
-║   RMV Merch Shop — Cloud Server v2.0   ║
-╚══════════════════════════════════════════╝
-  Port:      {PORT}
-  Email:     {SMTP_USER or '⚠ NICHT GESETZT'}
-  Stripe:    {'✓ konfiguriert' if STRIPE_SECRET_KEY else '⚠ NICHT GESETZT'}
-  Shop-URL:  {SHOP_URL or '(wird vom Browser übergeben)'}
-{''.join(chr(10)+'  ⚠  Bitte setze: '+v+' (Railway-Umgebungsvariablen)' for v in missing)}
-  Läuft — Strg+C zum Stoppen
-""")
+    print("""
+╬═══════════════════════════════════════════╩
+║   RMV Merch Shop — Cloud Server v2.1   ║
+╚═══════════════════════════════════════════╝""")
 
     server = HTTPServer(("0.0.0.0", PORT), OrderHandler)
     try:
