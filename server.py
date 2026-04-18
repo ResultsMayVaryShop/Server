@@ -62,8 +62,23 @@ class OrderHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/inventory":
             self._respond(200, INVENTORY)
+        elif self.path in ("/", "/index.html"):
+            self._serve_html()
         else:
             self._respond(200, {"status": "RMV Merch Shop Server läuft ✓", "version": "2.1-render"})
+
+    def _serve_html(self):
+        html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+        if os.path.exists(html_path):
+            with open(html_path, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+        else:
+            self._respond(404, {"error": "index.html nicht gefunden"})
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
