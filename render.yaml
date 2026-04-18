@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rmv-merch-shop
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: EMAIL_ADRESSE
+        sync: false
+      - key: EMAIL_PASSWORT
+        sync: false
+      - key: BENACHRICHTIGUNG_AN
+        sync: false
+      - key: SHOP_URL
+        sync: false
