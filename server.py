@@ -140,24 +140,26 @@ def create_checkout_session(order):
     # Shop-URL: zuerst aus Order (vom Browser), dann aus Env-Var, dann Fallback
     shop_url = order.pop("shopUrl", None) or SHOP_URL or "http://localhost:8080"
 
-    # ── Größen-Validierung ────────────────────────────────────────
-    # Prüfen ob alle bestellten Größen noch verfügbar sind
+    # ── Größen-Validierung (nur Drop 1 — Drop 2 ist immer auf Bestellung) ──
     cart_items = order.get("cart", [])
     for item in cart_items:
+        drop    = item.get("drop", "")
+        # Drop 2 ist immer unbegrenzt verfügbar → überspringen
+        if "2" in str(drop):
+            continue
         produkt = item.get("produkt", "")
         farbe   = item.get("farbe", "").lower().replace(" ", "")
         groesse = item.get("groesse", "")
-        # Inventory-Key zusammenbauen (z.B. sweater_drop1_violet)
+        # Inventory-Key für Drop 1 suchen (z.B. sweater_drop1_violet)
         inv_key = None
         for key in INVENTORY:
-            key_farbe = key.split("_")[-1]  # letzter Teil = farbe
-            if farbe in key and groesse:
+            if "drop1" in key and farbe in key and groesse:
                 inv_key = key
                 break
         if inv_key and inv_key in INVENTORY:
             inv = INVENTORY[inv_key]
             avail_sizes = inv.get("sizes", [])
-            # Wenn sizes-Liste existiert und nicht leer ist, prüfen ob gewählte Größe drin ist
+            # Prüfen ob gewählte Größe noch verfügbar ist
             if isinstance(avail_sizes, list) and avail_sizes and groesse not in avail_sizes:
                 raise ValueError(
                     f"SOLD_OUT:{produkt} in Größe {groesse} ist leider ausverkauft. "
