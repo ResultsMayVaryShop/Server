@@ -92,6 +92,13 @@ class OrderHandler(BaseHTTPRequestHandler):
         if self.path == "/checkout":
             try:
                 self._respond(200, create_checkout_session(data))
+            except ValueError as e:
+                msg = str(e)
+                if msg.startswith("SOLD_OUT:"):
+                    # Freundliche Fehlermeldung für ausverkaufte Größen
+                    self._respond(409, {"error": msg[9:]})
+                else:
+                    self._respond(400, {"error": msg})
             except Exception as e:
                 import traceback; traceback.print_exc()
                 self._respond(500, {"error": str(e)})
@@ -133,6 +140,30 @@ def create_checkout_session(order):
     # Shop-URL: zuerst aus Order (vom Browser), dann aus Env-Var, dann Fallback
     shop_url = order.pop("shopUrl", None) or SHOP_URL or "http://localhost:8080"
 
+    # ── Größen-Validierung ────────────────────────────────────────
+    # Prüfen ob alle bestellten Größen noch verfügbar sind
+    cart_items = order.get("cart", [])
+    for item in cart_items:
+        produkt = item.get("produkt", "")
+        farbe   = item.get("farbe", "").lower().replace(" ", "")
+        groesse = item.get("groesse", "")
+        # Inventory-Key zusammenbauen (z.B. sweater_drop1_violet)
+        inv_key = None
+        for key in INVENTORY:
+            key_farbe = key.split("_")[-1]  # letzter Teil = farbe
+            if farbe in key and groesse:
+                inv_key = key
+                break
+        if inv_key and inv_key in INVENTORY:
+            inv = INVENTORY[inv_key]
+            avail_sizes = inv.get("sizes", [])
+            # Wenn sizes-Liste existiert und nicht leer ist, prüfen ob gewählte Größe drin ist
+            if isinstance(avail_sizes, list) and avail_sizes and groesse not in avail_sizes:
+                raise ValueError(
+                    f"SOLD_OUT:{produkt} in Größe {groesse} ist leider ausverkauft. "
+                    f"Noch verfügbar: {', '.join(avail_sizes) if avail_sizes else 'keine'}."
+                )
+
     # Stripe Line Items: einzelne Artikel wenn vorhanden, sonst Gesamt
     cart_items = order.get("cart", [])
     versand    = float(order.get("versand", 0) or 0)
@@ -173,7 +204,7 @@ def create_checkout_session(order):
         }]
 
     session = stripe.checkout.Session.create(
-        payment_method_types=["card", "paypal", "sepa_debit"],
+        payment_method_types=["card", "sepa_debit"],
         line_items=line_items,
         mode="payment",
         customer_email=order.get("email", "") or None,

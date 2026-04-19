@@ -481,9 +481,19 @@ function submitOrder(){
   var ov=document.getElementById('loading-overlay');if(ov)ov.classList.add('open');
   document.getElementById('submitBtn').disabled=true;
   fetch(RAIL+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)})
-  .then(function(r){return r.json();})
-  .then(function(d){if(d.checkoutUrl){location.href=d.checkoutUrl;}else{throw new Error(d.error||'Unbekannter Fehler');}})
-  .catch(function(err){if(ov)ov.classList.remove('open');document.getElementById('submitBtn').disabled=false;alert('Fehler: '+err.message);});
+  .then(function(r){
+    if(r.status===409){
+      return r.json().then(function(d){
+        if(ov)ov.classList.remove('open');
+        document.getElementById('submitBtn').disabled=false;
+        alert('\u26A0\uFE0F Diese Gr\u00F6\u00DFe ist leider ausverkauft.\n\n'+( d.error||'Bitte w\u00E4hle eine andere Gr\u00F6\u00DFe.'));
+        throw new Error('sold_out');
+      });
+    }
+    return r.json();
+  })
+  .then(function(d){if(d&&d.checkoutUrl){location.href=d.checkoutUrl;}else if(d&&d.error){throw new Error(d.error);}})
+  .catch(function(err){if(err.message==='sold_out')return;if(ov)ov.classList.remove('open');document.getElementById('submitBtn').disabled=false;alert('Fehler: '+err.message);});
 }
 
 function checkPaymentReturn(){
