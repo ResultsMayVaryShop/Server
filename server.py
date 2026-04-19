@@ -130,22 +130,51 @@ def create_checkout_session(order):
     import stripe
     stripe.api_key = STRIPE_SECRET_KEY
 
-    gesamt_cent = int(round(float(order.get("gesamt", 0)) * 100))
-    prod_label  = f"{order.get('produkt','')} · {order.get('farbe','')} · Gr. {order.get('groesse','')}"
-
     # Shop-URL: zuerst aus Order (vom Browser), dann aus Env-Var, dann Fallback
     shop_url = order.pop("shopUrl", None) or SHOP_URL or "http://localhost:8080"
 
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card", "paypal", "sepa_debit"],
-        line_items=[{
+    # Stripe Line Items: einzelne Artikel wenn vorhanden, sonst Gesamt
+    cart_items = order.get("cart", [])
+    versand    = float(order.get("versand", 0) or 0)
+
+    if cart_items:
+        line_items = []
+        for item in cart_items:
+            name = f"RMV {item.get('produkt','')} · {item.get('farbe','')} · Gr. {item.get('groesse','')}"
+            cent = int(round(float(item.get("preis", 0)) * 100))
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": name, "description": "RMV Merch"},
+                    "unit_amount": cent,
+                },
+                "quantity": int(item.get("anzahl", 1)),
+            })
+        if versand > 0:
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": "Versand (DHL)"},
+                    "unit_amount": int(round(versand * 100)),
+                },
+                "quantity": 1,
+            })
+    else:
+        # Fallback: Gesamt als einzelne Position
+        gesamt_cent = int(round(float(order.get("gesamt", 0)) * 100))
+        prod_label  = f"{order.get('produkt','')} · {order.get('farbe','')} · Gr. {order.get('groesse','')}"
+        line_items = [{
             "price_data": {
                 "currency": "eur",
                 "product_data": {"name": prod_label, "description": "RMV Merch"},
                 "unit_amount": gesamt_cent,
             },
             "quantity": 1,
-        }],
+        }]
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card", "paypal", "sepa_debit"],
+        line_items=line_items,
         mode="payment",
         customer_email=order.get("email", "") or None,
         success_url=shop_url + "?paid=1&sid={CHECKOUT_SESSION_ID}",
@@ -198,10 +227,27 @@ def handle_waitlist(data):
     label = "Event-Warteliste" if typ == "event" else "Retreat-Warteliste"
     print(f"\n✉  {label}: {vn} {nn} <{em}>")
 
+    # Backup: In Textdatei loggen (Render-Filesystem, leert sich bei Redeploy)
+    _log_waitlist(vn, nn, em, typ, msg, datum)
+
     # Email-Benachrichtigung an Carola
     _send_waitlist_email(vn, nn, em, typ, msg, datum)
 
     return {"success": True}
+
+
+def _log_waitlist(vn, nn, em, typ, msg, datum):
+    """Schreibt Wartelisten-Eintrag in waitlist.txt als Backup."""
+    try:
+        log_path = os.path.join(BASE_DIR, "waitlist.txt")
+        line = f"{datum} | {typ.upper()} | {vn} {nn} | {em}"
+        if msg:
+            line += f" | {msg}"
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+        print(f"  ✓ Warteliste geloggt → waitlist.txt")
+    except Exception as e:
+        print(f"  ✗ Log-Fehler: {e}")
 
 
 def _send_waitlist_email(vn, nn, em, typ, msg, datum):
