@@ -254,6 +254,9 @@ def create_checkout_session(order):
         success_url=shop_url + "?paid=1&sid={CHECKOUT_SESSION_ID}",
         cancel_url=shop_url + "?cancelled=1",
         metadata=meta,
+        payment_intent_data={
+            "description": "RMV Merch Shop",
+        },
     )
 
     # Bestellung im Arbeitsspeicher merken bis Zahlung bestätigt
