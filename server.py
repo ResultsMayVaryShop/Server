@@ -50,7 +50,7 @@ def _load_inv_num():
                 return int(f.read().strip())
     except Exception:
         pass
-    return 59  # Startwert falls keine Datei vorhanden
+    return 46  # Startwert: nächste freie Rechnungsnummer (letzte manuelle: ~045)
 
 def _save_inv_num(n):
     try:
