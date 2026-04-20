@@ -1,6 +1,6 @@
 """
-RMV Merch Shop â Cloud Server
-LÃ¤uft auf Render.com â kein lokaler Laptop nÃ¶tig, immer online.
+RMV Merch Shop — Cloud Server
+Läuft auf Render.com — kein lokaler Laptop nötig, immer online.
 Einstellungen: Umgebungsvariablen im Render-Dashboard eintragen.
 """
 
@@ -8,7 +8,7 @@ import os, json, io
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ââ Konfiguration (aus Render-Umgebungsvariablen) âââââââââââââ
+# ── Konfiguration (aus Render-Umgebungsvariablen) ─────────────
 PORT              = int(os.environ.get("PORT", 8787))
 SMTP_USER         = os.environ.get("EMAIL_ADRESSE", "")
 SMTP_PASSWORD     = os.environ.get("EMAIL_PASSWORT", "")
@@ -20,27 +20,27 @@ SMTP_SERVER = "smtp-mail.outlook.com"
 SMTP_PORT   = 587
 
 
-# ââ In-Memory-Zustand âââââââââââââââââââââââââââââââââââââââââ
-# Lagerbestand â wird beim Server-Start einmalig geladen und
-# dann im Arbeitsspeicher aktualisiert. ZurÃ¼cksetzen bei Neustart
-# ist fÃ¼r diesen kleinen Shop akzeptabel (Emails sind das Backup).
+# ── In-Memory-Zustand ─────────────────────────────────────────
+# Lagerbestand — wird beim Server-Start einmalig geladen und
+# dann im Arbeitsspeicher aktualisiert. Zurücksetzen bei Neustart
+# ist für diesen kleinen Shop akzeptabel (Emails sind das Backup).
 
 INVENTORY = {
-    # Drop 1 â Lagerware (aktuelle Zahlen aus Excel)
-    "sweater_drop1_violet":     {"available": 1,   "status": "Wenige Ã¼brig",  "sizes": ["M"]},
-    "sweater_drop1_khaki":      {"available": 3,   "status": "Wenige Ã¼brig",  "sizes": ["M", "L"]},
-    "sweater_drop1_naturalraw": {"available": 2,   "status": "Wenige Ã¼brig",  "sizes": ["M", "L"]},
-    "tshirt_drop1_naturalraw":  {"available": 6,   "status": "VerfÃ¼gbar",     "sizes": ["S", "M", "L"]},
-    # Drop 2 â Auf Bestellung (unbegrenzt)
-    "sweater_drop2_naturalraw": {"available": "â", "status": "Auf Bestellung","sizes": []},
-    "sweater_drop2_violet":     {"available": "â", "status": "Auf Bestellung","sizes": []},
-    "sweater_drop2_khaki":      {"available": "â", "status": "Auf Bestellung","sizes": []},
-    "tshirt_drop2_naturalraw":  {"available": "â", "status": "Auf Bestellung","sizes": []},
+    # Drop 1 — Lagerware (aktuelle Zahlen aus Excel)
+    "sweater_drop1_violet":     {"available": 1,   "status": "Wenige übrig",  "sizes": ["M"]},
+    "sweater_drop1_khaki":      {"available": 3,   "status": "Wenige übrig",  "sizes": ["M", "L"]},
+    "sweater_drop1_naturalraw": {"available": 2,   "status": "Wenige übrig",  "sizes": ["M", "L"]},
+    "tshirt_drop1_naturalraw":  {"available": 6,   "status": "Verfügbar",     "sizes": ["S", "M", "L"]},
+    # Drop 2 — Auf Bestellung (unbegrenzt, 9999 = kein Badge im Shop)
+    "sweater_drop2_naturalraw": {"available": 9999, "status": "Auf Bestellung","sizes": []},
+    "sweater_drop2_violet":     {"available": 9999, "status": "Auf Bestellung","sizes": []},
+    "sweater_drop2_khaki":      {"available": 9999, "status": "Auf Bestellung","sizes": []},
+    "tshirt_drop2_naturalraw":  {"available": 9999, "status": "Auf Bestellung","sizes": []},
 }
 
-PENDING_ORDERS = {}   # stripe_session_id â order-dict (in-memory)
+PENDING_ORDERS = {}   # stripe_session_id → order-dict (in-memory)
 
-# ââ Rechnungsnummer persistent in Datei speichern ââââââââââââ
+# ── Rechnungsnummer persistent in Datei speichern ────────────
 _INV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "inv_counter.txt")
 
 def _load_inv_num():
@@ -57,12 +57,12 @@ def _save_inv_num(n):
         with open(_INV_FILE, "w") as f:
             f.write(str(n))
     except Exception as e:
-        print(f"  â   Konnte Rechnungsnummer nicht speichern: {e}")
+        print(f"  ⚠  Konnte Rechnungsnummer nicht speichern: {e}")
 
-NEXT_INV_NUM = [_load_inv_num()]  # Liste damit Ãnderung in Funktionen mÃ¶glich ist
+NEXT_INV_NUM = [_load_inv_num()]  # Liste damit Änderung in Funktionen möglich ist
 
 
-# ââ HTTP-Handler ââââââââââââââââââââââââââââââââââââââââââââââ
+# ── HTTP-Handler ──────────────────────────────────────────────
 
 class OrderHandler(BaseHTTPRequestHandler):
 
@@ -85,7 +85,7 @@ class OrderHandler(BaseHTTPRequestHandler):
         elif self.path in ("/", "/index.html"):
             self._serve_html()
         else:
-            self._respond(200, {"status": "RMV Merch Shop Server lÃ¤uft \u2713", "version": "2.1-render"})
+            self._respond(200, {"status": "RMV Merch Shop Server läuft \u2713", "version": "2.1-render"})
 
     def _serve_html(self):
         html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
@@ -115,7 +115,7 @@ class OrderHandler(BaseHTTPRequestHandler):
             except ValueError as e:
                 msg = str(e)
                 if msg.startswith("SOLD_OUT:"):
-                    # Freundliche Fehlermeldung fÃ¼r ausverkaufte GrÃ¶Ãen
+                    # Freundliche Fehlermeldung für ausverkaufte Größen
                     self._respond(409, {"error": msg[9:]})
                 else:
                     self._respond(400, {"error": msg})
@@ -149,7 +149,7 @@ class OrderHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-# ââ Stripe Checkout âââââââââââââââââââââââââââââââââââââââââââ
+# ── Stripe Checkout ───────────────────────────────────────────
 
 def create_checkout_session(order):
     if not STRIPE_SECRET_KEY:
@@ -160,17 +160,17 @@ def create_checkout_session(order):
     # Shop-URL: zuerst aus Order (vom Browser), dann aus Env-Var, dann Fallback
     shop_url = order.pop("shopUrl", None) or SHOP_URL or "http://localhost:8080"
 
-    # ââ GrÃ¶Ãen-Validierung (nur Drop 1 â Drop 2 ist immer auf Bestellung) ââ
+    # ── Größen-Validierung (nur Drop 1 — Drop 2 ist immer auf Bestellung) ──
     cart_items = order.get("cart", [])
     for item in cart_items:
         drop    = item.get("drop", "")
-        # Drop 2 ist immer unbegrenzt verfÃ¼gbar â Ã¼berspringen
+        # Drop 2 ist immer unbegrenzt verfügbar → überspringen
         if "2" in str(drop):
             continue
         produkt = item.get("produkt", "")
         farbe   = item.get("farbe", "").lower().replace(" ", "")
         groesse = item.get("groesse", "")
-        # Inventory-Key fÃ¼r Drop 1 suchen (z.B. sweater_drop1_violet)
+        # Inventory-Key für Drop 1 suchen (z.B. sweater_drop1_violet)
         inv_key = None
         for key in INVENTORY:
             if "drop1" in key and farbe in key and groesse:
@@ -179,11 +179,11 @@ def create_checkout_session(order):
         if inv_key and inv_key in INVENTORY:
             inv = INVENTORY[inv_key]
             avail_sizes = inv.get("sizes", [])
-            # PrÃ¼fen ob gewÃ¤hlte GrÃ¶Ãe noch verfÃ¼gbar ist
+            # Prüfen ob gewählte Größe noch verfügbar ist
             if isinstance(avail_sizes, list) and avail_sizes and groesse not in avail_sizes:
                 raise ValueError(
-                    f"SOLD_OUT:{produkt} in GrÃ¶Ãe {groesse} ist leider ausverkauft. "
-                    f"Noch verfÃ¼gbar: {', '.join(avail_sizes) if avail_sizes else 'keine'}."
+                    f"SOLD_OUT:{produkt} in Größe {groesse} ist leider ausverkauft. "
+                    f"Noch verfügbar: {', '.join(avail_sizes) if avail_sizes else 'keine'}."
                 )
 
     # Stripe Line Items: einzelne Artikel wenn vorhanden, sonst Gesamt
@@ -193,7 +193,7 @@ def create_checkout_session(order):
     if cart_items:
         line_items = []
         for item in cart_items:
-            name = f"RMV {item.get('produkt','')} Â· {item.get('farbe','')} Â· Gr. {item.get('groesse','')}"
+            name = f"RMV {item.get('produkt','')} · {item.get('farbe','')} · Gr. {item.get('groesse','')}"
             cent = int(round(float(item.get("preis", 0)) * 100))
             line_items.append({
                 "price_data": {
@@ -215,7 +215,7 @@ def create_checkout_session(order):
     else:
         # Fallback: Gesamt als einzelne Position
         gesamt_cent = int(round(float(order.get("gesamt", 0)) * 100))
-        prod_label  = f"{order.get('produkt','')} Â· {order.get('farbe','')} Â· Gr. {order.get('groesse','')}"
+        prod_label  = f"{order.get('produkt','')} · {order.get('farbe','')} · Gr. {order.get('groesse','')}"
         line_items = [{
             "price_data": {
                 "currency": "eur",
@@ -256,9 +256,9 @@ def create_checkout_session(order):
         metadata=meta,
     )
 
-    # Bestellung im Arbeitsspeicher merken bis Zahlung bestÃ¤tigt
+    # Bestellung im Arbeitsspeicher merken bis Zahlung bestätigt
     PENDING_ORDERS[session.id] = order
-    print(f"  â Stripe Session: {session.id}")
+    print(f"  ✓ Stripe Session: {session.id}")
     return {"checkoutUrl": session.url}
 
 
@@ -281,7 +281,7 @@ def verify_and_process(data):
         # Fallback: Bestelldaten aus Stripe-Metadata wiederherstellen (nach Server-Neustart)
         meta = session.metadata or {}
         if meta.get("vorname"):
-            print(f"  â¹  Order aus Stripe-Metadata wiederhergestellt (Server-Neustart)")
+            print(f"  ℹ  Order aus Stripe-Metadata wiederhergestellt (Server-Neustart)")
             order = {
                 "vorname":  meta.get("vorname",  ""),
                 "nachname": meta.get("nachname", ""),
@@ -296,7 +296,7 @@ def verify_and_process(data):
                 "versand":  float(meta.get("versand",0)),
                 "strasse":  meta.get("strasse",  ""),
                 "plz":      meta.get("plz",      ""),
-                "stadt":    meta.get("stadt",    "MÃ¼nchen"),
+                "stadt":    meta.get("stadt",    "München"),
                 "lieferung":meta.get("lieferung",""),
                 "runclub":  meta.get("runclub",  ""),
             }
@@ -309,7 +309,7 @@ def verify_and_process(data):
     return result
 
 
-# ââ Warteliste âââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Warteliste ───────────────────────────────────────────────
 
 def handle_waitlist(data):
     """Wartelisten-Eintrag speichern und Email-Benachrichtigung senden."""
@@ -324,7 +324,7 @@ def handle_waitlist(data):
         raise ValueError("Pflichtfelder fehlen")
 
     label = "Event-Warteliste" if typ == "event" else "Retreat-Warteliste"
-    print(f"\nâ  {label}: {vn} {nn} <{em}>")
+    print(f"\n✉  {label}: {vn} {nn} <{em}>")
 
     # Backup: In Textdatei loggen (Render-Filesystem, leert sich bei Redeploy)
     _log_waitlist(vn, nn, em, typ, msg, datum)
@@ -344,15 +344,15 @@ def _log_waitlist(vn, nn, em, typ, msg, datum):
             line += f" | {msg}"
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
-        print(f"  â Warteliste geloggt â waitlist.txt")
+        print(f"  ✓ Warteliste geloggt → waitlist.txt")
     except Exception as e:
-        print(f"  â Log-Fehler: {e}")
+        print(f"  ✗ Log-Fehler: {e}")
 
 
 def _send_waitlist_email(vn, nn, em, typ, msg, datum):
     """Sendet eine Benachrichtigungs-Email bei neuem Wartelisten-Eintrag."""
     if not SMTP_USER or not SMTP_PASSWORD:
-        print("  â   SMTP nicht konfiguriert â Email Ã¼bersprungen")
+        print("  ⚠  SMTP nicht konfiguriert — Email übersprungen")
         return
     try:
         import smtplib
@@ -361,7 +361,7 @@ def _send_waitlist_email(vn, nn, em, typ, msg, datum):
         subject = f"[RMV] Neue {label}-Warteliste: {vn} {nn}"
         body = (
             f"Neuer Wartelisten-Eintrag ({label})\n"
-            f"{'â'*40}\n"
+            f"{'─'*40}\n"
             f"Name:    {vn} {nn}\n"
             f"Email:   {em}\n"
             f"Datum:   {datum}\n"
@@ -379,36 +379,36 @@ def _send_waitlist_email(vn, nn, em, typ, msg, datum):
             s.ehlo(); s.starttls(); s.ehlo()
             s.login(SMTP_USER, SMTP_PASSWORD)
             s.send_message(eml)
-        print(f"  â Warteliste-Email gesendet an {OWNER_EMAIL}")
+        print(f"  ✓ Warteliste-Email gesendet an {OWNER_EMAIL}")
 
-        # BestÃ¤tigungs-Email an Person, die sich eingetragen hat
+        # Bestätigungs-Email an Person, die sich eingetragen hat
         confirm_eml = EmailMessage()
         confirm_eml["From"]    = SMTP_USER
         confirm_eml["To"]      = em
-        confirm_eml["Subject"] = f"Du bist auf der {label} â"
+        confirm_eml["Subject"] = f"Du bist auf der {label} ✓"
         confirm_eml.set_content(
-            f"Hej {vn}! ð\n\n"
-            f"Du bist auf unserer {label} eingetragen â wir melden uns,\n"
+            f"Hej {vn}! 👋\n\n"
+            f"Du bist auf unserer {label} eingetragen – wir melden uns,\n"
             f"sobald es Neuigkeiten gibt!\n\n"
-            f"Liebe GrÃ¼Ãe,\nCarola & das RMV Team ð\n"
+            f"Liebe Grüße,\nCarola & das RMV Team 🏃\n"
             f"results.mv@outlook.com\n"
         )
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as s:
             s.ehlo(); s.starttls(); s.ehlo()
             s.login(SMTP_USER, SMTP_PASSWORD)
             s.send_message(confirm_eml)
-        print(f"  â Warteliste-BestÃ¤tigung â {em}")
+        print(f"  ✓ Warteliste-Bestätigung → {em}")
     except Exception as e:
-        print(f"  â Email-Fehler: {e}")
+        print(f"  ✗ Email-Fehler: {e}")
 
 
-# ââ Haupt-Logik âââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Haupt-Logik ───────────────────────────────────────────────
 
 def process_order(order, paid=False):
     name = f"{order.get('vorname','')} {order.get('nachname','')}".strip()
     print(f"\n{'='*50}")
     print(f"  Neue Bestellung: {name} {'(BEZAHLT)' if paid else ''}")
-    print(f"  {order.get('produkt')} Â· {order.get('farbe')} Â· Gr. {order.get('groesse')}")
+    print(f"  {order.get('produkt')} · {order.get('farbe')} · Gr. {order.get('groesse')}")
     print(f"{'='*50}")
 
     inv_num = NEXT_INV_NUM[0]
@@ -416,22 +416,27 @@ def process_order(order, paid=False):
     _save_inv_num(NEXT_INV_NUM[0])  # Persistent speichern
     inv_str = str(inv_num).zfill(3)
 
-    # Lagerbestand aktualisieren (nur Drop 1 â Cart-Items einzeln verarbeiten)
+    # Lagerbestand aktualisieren (nur Drop 1 — Cart-Items einzeln verarbeiten)
+    reorder_notes = []
     cart_items_inv = order.get("cart", [])
     if cart_items_inv:
         for ci in cart_items_inv:
             if "2" not in str(ci.get("drop", "")):
-                _update_inventory(ci)
+                note = _update_inventory(ci)
+                if note:
+                    reorder_notes.append(note)
     elif "2" not in str(order.get("drop", "")):
-        _update_inventory(order)
+        note = _update_inventory(order)
+        if note:
+            reorder_notes.append(note)
 
-    send_emails(order, inv_str, paid=paid)
-    print(f"\nâ Fertig â Rechnung Nr. {inv_str}")
+    send_emails(order, inv_str, paid=paid, reorder_notes=reorder_notes)
+    print(f"\n✓ Fertig — Rechnung Nr. {inv_str}")
     return {"success": True, "invoiceNumber": inv_str}
 
 
 def _norm(s):
-    return str(s or "").strip().lower().replace(" ", "").replace("-", "").replace("(new)", "")
+    return str(s or "").strip().lower().replace(" ", "").replace("-", "").replace("(neu)", "")
 
 
 def _update_inventory(order):
@@ -441,25 +446,28 @@ def _update_inventory(order):
     anzahl  = int(order.get("anzahl", 1))
 
     key = f"{prod}_{drop}_{farbe}"
-    if key in INVENTORY and INVENTORY[key]["available"] != "â":
+    if key in INVENTORY and isinstance(INVENTORY[key].get("available"), int) and INVENTORY[key]["available"] < 9000:
         old = INVENTORY[key]["available"]
         INVENTORY[key]["available"] = max(0, int(old) - anzahl)
         avail = INVENTORY[key]["available"]
         if avail == 0:
             INVENTORY[key]["status"] = "Ausverkauft"
+            return f"{key.replace('_', ' ').title()}: AUSVERKAUFT – bitte nachbestellen!"
         elif avail <= 2:
-            INVENTORY[key]["status"] = "Wenige Ã¼brig"
+            INVENTORY[key]["status"] = "Wenige übrig"
+            return f"{key.replace('_', ' ').title()}: nur noch {avail} Stück – bitte bald nachbestellen!"
+    return None
 
 
-# ââ DOCX Rechnung ââââââââââââââââââââââââââââââââââââââââââââ
+# ── DOCX Rechnung ────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DOCX = os.path.join(BASE_DIR, "template_rechnung.docx")
 
 def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
-    """FÃ¼llt die Rechnungsvorlage aus und gibt DOCX-Bytes zurÃ¼ck."""
+    """Füllt die Rechnungsvorlage aus und gibt DOCX-Bytes zurück."""
     if not os.path.exists(TEMPLATE_DOCX):
-        print(f"  â   Rechnungsvorlage nicht gefunden: {TEMPLATE_DOCX}")
+        print(f"  ⚠  Rechnungsvorlage nicht gefunden: {TEMPLATE_DOCX}")
         return None
     try:
         import zipfile, io as _io
@@ -484,12 +492,12 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
                     anzahl  = str(order.get("anzahl", 1))
                     vorname = order.get("vorname", "")
                     nachname= order.get("nachname", "")
-                    strasse = order.get("strasse", "â")
+                    strasse = order.get("strasse", "—")
                     plz     = order.get("plz", "")
-                    stadt   = order.get("stadt", "MÃ¼nchen")
+                    stadt   = order.get("stadt", "München")
                     datum   = order.get("datum", today_str)
 
-                    prod_line = f"RMV Merch â {prod} Â· {farbe} Â· {drop} Â· Gr. {groesse}"
+                    prod_line = f"RMV Merch — {prod} · {farbe} · {drop} · Gr. {groesse}"
                     versand_zeile = (
                         f"inkl. Versand DHL: {versand:.2f} \u20ac"
                         if versand > 0 else "Abholung beim Run Club"
@@ -502,7 +510,7 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
                     for old, new in [
                         ("14. M\u00e4rz 2026",                                   datum),
                         ("011",                                                   inv_str),
-                        ("yy",                                                    vorname),
+                        ("xx",                                                    vorname),
                         ("xx stra\u00dfe",                                        f"{nachname} {strasse}"),
                         ("M\u00fcnchen",                                          f"{plz} {stadt}"),
                         ("F\u00e4llig am 03.04.2026 ",                           zahlung + " "),
@@ -524,19 +532,19 @@ def _generate_invoice_docx(order, inv_str, paid, today_str, due_str):
                     data = xml.encode("utf-8")
                 zout.writestr(item, data)
 
-        print(f"  â DOCX Rechnung generiert: {inv_str}_Merch_{order.get('vorname','')}{order.get('nachname','')}_2026.docx")
+        print(f"  ✓ DOCX Rechnung generiert: {inv_str}_Merch_{order.get('vorname','')}{order.get('nachname','')}_2026.docx")
         return buf_out.getvalue()
     except Exception as e:
-        print(f"  â   DOCX Generierung fehlgeschlagen: {e}")
+        print(f"  ⚠  DOCX Generierung fehlgeschlagen: {e}")
         import traceback; traceback.print_exc()
         return None
 
 
-# ââ Emails ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Emails ────────────────────────────────────────────────────
 
-def send_emails(order, inv_str, paid=False):
+def send_emails(order, inv_str, paid=False, reorder_notes=None):
     if not SMTP_PASSWORD:
-        print("  â   Email Ã¼bersprungen â EMAIL_PASSWORT nicht gesetzt")
+        print("  ⚠  Email übersprungen — EMAIL_PASSWORT nicht gesetzt")
         return False
 
     name        = f"{order.get('vorname','')} {order.get('nachname','')}".strip()
@@ -563,20 +571,20 @@ def send_emails(order, inv_str, paid=False):
             srv.ehlo(); srv.starttls(); srv.login(SMTP_USER, SMTP_PASSWORD)
             srv.send_message(msg)
 
-    # ââ 1. Team-Benachrichtigung (Plaintext) ââââââââââââââââââ
+    # ── 1. Team-Benachrichtigung (Plaintext) ──────────────────
     liefertext = f"Run Club am {runclub}" if runclub else f"Versand nach {order.get('strasse','')}, {order.get('plz','')} {order.get('stadt','')}"
 
     # Artikel-Liste: Cart-Items wenn vorhanden, sonst Einzelartikel
     cart_items = order.get("cart", [])
     if cart_items:
         artikel_zeilen = "\n".join(
-            f"  {item.get('anzahl',1)}x  {item.get('produkt','')} Â· {item.get('farbe','')} Â· {item.get('drop','')} Â· Gr. {item.get('groesse','')}  ({item.get('preis',0)} â¬)"
+            f"  {item.get('anzahl',1)}x  {item.get('produkt','')} · {item.get('farbe','')} · {item.get('drop','')} · Gr. {item.get('groesse','')}  ({item.get('preis',0)} €)"
             for item in cart_items
         )
     else:
-        artikel_zeilen = f"  {anzahl}x  {produkt} Â· {farbe} Â· {drop} Â· Gr. {groesse}  ({preis} â¬)"
+        artikel_zeilen = f"  {anzahl}x  {produkt} · {farbe} · {drop} · Gr. {groesse}  ({preis} €)"
 
-    team_body = f"""ðï¸  NEUE BESTELLUNG â RMV Merch Shop
+    team_body = f"""🛍️  NEUE BESTELLUNG — RMV Merch Shop
 {'='*45}
 
 Rechnung Nr.:  {inv_str}
@@ -588,36 +596,42 @@ KUNDE:
 
 BESTELLUNG:
 {artikel_zeilen}
-  ââââââââââââââââââââââââââââââ
-  Versand: {versand} â¬
-  Gesamt:  {gesamt} â¬
+  ──────────────────────────────
+  Versand: {versand} €
+  Gesamt:  {gesamt} €
 
 LIEFERUNG:  {liefertext}
 
-ð³ Zahlungsstatus: {'BEZAHLT (Stripe) â' if paid else 'Ausstehend'}
+💳 Zahlungsstatus: {'BEZAHLT (Stripe) ✓' if paid else 'Ausstehend'}
 """
     if order.get("anmerkung"):
         team_body += f"\nAnmerkung: {order.get('anmerkung')}\n"
 
+    if reorder_notes:
+        team_body += f"\n{'='*45}\n"
+        team_body += f"⚠ LAGERBESTAND — NACHBESTELLEN:\n"
+        for note in reorder_notes:
+            team_body += f"  · {note}\n"
+
     msg1 = MIMEMultipart("alternative")
     msg1["From"]    = SMTP_USER
     msg1["To"]      = OWNER_EMAIL
-    msg1["Subject"] = f"[RMV Shop] Nr. {inv_str} â {name} â {produkt} {farbe} Gr.{groesse}"
+    msg1["Subject"] = f"[RMV Shop] Nr. {inv_str} — {name} — {produkt} {farbe} Gr.{groesse}"
     msg1.attach(MIMEText(team_body, "plain", "utf-8"))
 
     try:
         _send(msg1)
-        print(f"  â Team-Email â {OWNER_EMAIL}")
+        print(f"  ✓ Team-Email → {OWNER_EMAIL}")
     except Exception as e:
-        print(f"  â   Team-Email fehlgeschlagen: {e}")
+        print(f"  ⚠  Team-Email fehlgeschlagen: {e}")
 
-    # ââ 2. Kunden-BestÃ¤tigung + DOCX-Rechnung ââââââââââââââââââââ
+    # ── 2. Kunden-Bestätigung + DOCX-Rechnung ────────────────────
     if not kunde_email:
         return True
 
     today     = datetime.now()
     due       = today + timedelta(days=14)
-    monate    = ["Januar","Februar","MÃ¤rz","April","Mai","Juni",
+    monate    = ["Januar","Februar","März","April","Mai","Juni",
                  "Juli","August","September","Oktober","November","Dezember"]
     today_str = f"{today.day:02d}. {monate[today.month-1]} {today.year}"
     due_str   = due.strftime("%d.%m.%Y")
@@ -625,28 +639,28 @@ LIEFERUNG:  {liefertext}
     msg2 = MIMEMultipart()
     msg2["From"]    = SMTP_USER
     msg2["To"]      = kunde_email
-    msg2["Subject"] = f"Deine RMV Merch Rechnung Nr. {inv_str} ðï¸"
+    msg2["Subject"] = f"Deine RMV Merch Rechnung Nr. {inv_str} 🛍️"
 
-    # Kunden-BestÃ¤tigungs-Body (plain text)
+    # Kunden-Bestätigungs-Body (plain text)
     if cart_items:
         artikel_confirm = "\n".join(
-            f"  {item.get('anzahl',1)}x {item.get('produkt','')} Â· {item.get('farbe','')} Â· Gr. {item.get('groesse','')}"
+            f"  {item.get('anzahl',1)}x {item.get('produkt','')} · {item.get('farbe','')} · Gr. {item.get('groesse','')}"
             for item in cart_items
         )
     else:
-        artikel_confirm = f"  {anzahl}x {produkt} Â· {farbe} Â· Gr. {groesse}"
+        artikel_confirm = f"  {anzahl}x {produkt} · {farbe} · Gr. {groesse}"
 
-    confirm_body = f"""Hej {vorname}! ð
+    confirm_body = f"""Hej {vorname}! 👋
 
-Danke fÃ¸r deine Bestellung â im Anhang findest du deine Rechnung.
+Danke für deine Bestellung — im Anhang findest du deine Rechnung.
 
 {artikel_confirm}
-  Gesamt: {gesamt} â¬
+  Gesamt: {gesamt} €
 
-{"Deine Zahlung ist eingegangen â alles erledigt! â" if paid else "Zahlungsdetails stehen auf der Rechnung."}
+{"Deine Zahlung ist eingegangen — alles erledigt! ✓" if paid else "Zahlungsdetails stehen auf der Rechnung."}
 
-Liebe GrÃ¸Ãe,
-Carola & das RMV Team ð
+Liebe Grüße,
+Carola & das RMV Team 🏃
 results.mv@outlook.com
 """
     msg2.attach(MIMEText(confirm_body, "plain", "utf-8"))
@@ -665,14 +679,14 @@ results.mv@outlook.com
 
     try:
         _send(msg2)
-        print(f"  â Kunden-Email â {kunde_email}")
+        print(f"  ✓ Kunden-Email → {kunde_email}")
     except Exception as e:
-        print(f"  â   Kunden-Email fehlgeschlagen: {e}")
+        print(f"  ⚠  Kunden-Email fehlgeschlagen: {e}")
 
     return True
 
 
-# ââ Start âââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Start ─────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     missing = []
@@ -681,15 +695,15 @@ if __name__ == "__main__":
     if not STRIPE_SECRET_KEY: missing.append("STRIPE_SECRET_KEY")
 
     print(f"""
-ââââââââââââââââââââââââââââââââââââââââââââ
-â   RMV Merch Shop â Cloud Server v2.1   â
-ââââââââââââââââââââââââââââââââââââââââââââ
+╔══════════════════════════════════════════╗
+║   RMV Merch Shop — Cloud Server v2.1   ║
+╚══════════════════════════════════════════╝
   Port:      {PORT}
-  Email:     {SMTP_USER or 'â  NICHT GESETZT'}
-  Stripe:    {'â konfiguriert' if STRIPE_SECRET_KEY else 'â  NICHT GESETZT'}
-  Shop-URL:  {SHOP_URL or '(wird vom Browser Ã¼bergeben)'}
-{''.join(chr(10)+'  â   Bitte setze: '+v+' (Render-Umgebungsvariablen)' for v in missing)}
-  LÃ¤uft â Strg+C zum Stoppen
+  Email:     {SMTP_USER or '⚠ NICHT GESETZT'}
+  Stripe:    {'✓ konfiguriert' if STRIPE_SECRET_KEY else '⚠ NICHT GESETZT'}
+  Shop-URL:  {SHOP_URL or '(wird vom Browser übergeben)'}
+{''.join(chr(10)+'  ⚠  Bitte setze: '+v+' (Render-Umgebungsvariablen)' for v in missing)}
+  Läuft — Strg+C zum Stoppen
 """)
 
     server = HTTPServer(("0.0.0.0", PORT), OrderHandler)
