@@ -548,7 +548,7 @@ function loadInventory(){
       var badge=document.getElementById('badge-'+key);
       if(badge){
         if(item.available===0){badge.className='card-badge badge-sold';badge.textContent='Ausverkauft';var c=badge.closest('.card');if(c){c.style.opacity='0.5';c.style.pointerEvents='none';}}
-        else if(item.available==='\u221e'||item.available==='∞'){badge.className='card-badge badge-order';badge.textContent=item.status||'Auf Bestellung';}
+        else if(item.available>=9999){badge.style.display='none';}
         else if(item.available>5){badge.className='card-badge badge-order';badge.textContent=item.status||'Verf\u00fcgbar';}
         else{badge.className='card-badge badge-lager';badge.textContent='Noch '+item.available+' St\u00fcck';}
       }
