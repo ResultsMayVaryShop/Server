@@ -499,15 +499,26 @@ function submitOrder(){
 }
 
 function checkPaymentReturn(){
-  var params=new URLSearchParams(location.search);
-  var paid=params.get('paid'),sid=params.get('sid');
-  if(paid==='1'&&sid){
-    fetch(RAIL+'/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid})})
-    .then(function(r){return r.json();})
-    .then(function(d){if(d.success){document.getElementById('mainForm').style.display='none';document.getElementById('succDiv').classList.add('on');document.getElementById('succ-sub-text').innerHTML='Zahlung best\u00e4tigt \u2713<br>Rechnung Nr. '+d.invoiceNumber+' wurde per Email verschickt.';document.getElementById('succ-details').innerHTML='<strong>'+d.invoiceNumber+'</strong> \u2014 Bezahlt via Stripe \u2713';history.replaceState({},'',location.pathname);}})
-    .catch(function(){});
-  }
-  if(params.get('cancelled')==='1'){history.replaceState({},'',location.pathname);alert('Zahlung abgebrochen.');}
+var params=new URLSearchParams(location.search);
+var paid=params.get('paid'),sid=params.get('sid');
+if(paid==='1'&&sid){
+var ov=document.getElementById('loading-overlay');if(ov)ov.classList.add('open');
+var toast=document.createElement('div');
+toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:12px 22px;border-radius:8px;font-size:13px;z-index:9999;text-align:center;min-width:220px;';
+toast.textContent='Zahlung wird bestätigt…';document.body.appendChild(toast);
+var att=0,max=5;
+function done(){if(ov)ov.classList.remove('open');toast.remove();document.getElementById('mainForm').style.display='none';document.getElementById('succDiv').classList.add('on');document.getElementById('succ-sub-text').innerHTML='Zahlung bei Stripe bestätigt ✓<br>Rechnung folgt per Email.';history.replaceState({},'',location.pathname);}
+function tryV(){att++;toast.textContent='Zahlung wird bestätigt… ('+att+'/'+max+')';
+var ctrl=typeof AbortController!=='undefined'?new AbortController():{signal:undefined};
+var tid=setTimeout(function(){if(ctrl.abort)ctrl.abort();},16000);
+fetch(RAIL+'/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid}),signal:ctrl.signal})
+.then(function(r){clearTimeout(tid);var ct=r.headers.get('content-type')||'';if(!ct.includes('json'))throw new Error('no json');return r.json();})
+.then(function(d){clearTimeout(tid);if(ov)ov.classList.remove('open');toast.remove();if(d.success){document.getElementById('mainForm').style.display='none';document.getElementById('succDiv').classList.add('on');document.getElementById('succ-sub-text').innerHTML='Zahlung bestätigt ✓<br>Rechnung Nr. '+d.invoiceNumber+' wurde per Email verschickt.';document.getElementById('succ-details').innerHTML='<strong>'+d.invoiceNumber+'<\/strong> — Bezahlt via Stripe ✓';history.replaceState({},'',location.pathname);}else if(att<max){setTimeout(tryV,12000);}else{done();}})
+.catch(function(){clearTimeout(tid);if(att<max){toast.textContent='Server startet… bitte warten ('+att+'/'+max+')';setTimeout(tryV,12000);}else{done();}});
+}
+setTimeout(tryV,2000);
+}
+if(params.get('cancelled')==='1'){history.replaceState({},'',location.pathname);alert('Zahlung abgebrochen.');}
 }
 
 function showTicketForm(){
