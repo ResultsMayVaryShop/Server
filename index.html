@@ -482,6 +482,8 @@ function submitOrder(){
   document.getElementById('submitBtn').disabled=true;
   fetch(RAIL+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)})
   .then(function(r){
+    var ct=r.headers.get('content-type')||'';
+    if(!ct.includes('json')&&r.status!==409){if(ov)ov.classList.remove('open');document.getElementById('submitBtn').disabled=false;throw new Error('Server nicht erreichbar — bitte nochmal versuchen.');}
     if(r.status===409){
       return r.json().then(function(d){
         if(ov)ov.classList.remove('open');
@@ -521,7 +523,7 @@ function buyTicket(){
   var ov=document.getElementById('loading-overlay');if(ov)ov.classList.add('open');
   var order={vorname:vn,nachname:nn,email:em,produkt:'Ticket Giro di Monaco x RMV',farbe:'',groesse:'',drop:'Event',anzahl:1,preis:15,gesamt:15,versand:0,datum:new Date().toLocaleDateString('de-DE'),strasse:'Event',plz:'',stadt:'M\u00fcnchen',land:'Deutschland',lieferung:'Event Ticket',cart:[{produkt:'Ticket Giro di Monaco x RMV',farbe:'',drop:'Event',groesse:'',anzahl:1,preis:15}],shopUrl:location.href.split('?')[0]};
   fetch(RAIL+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)})
-  .then(function(r){return r.json();})
+  .then(function(r){var ct=r.headers.get('content-type')||'';if(!ct.includes('json')){if(ov)ov.classList.remove('open');throw new Error('Server nicht erreichbar — bitte nochmal versuchen.');}return r.json();})
   .then(function(d){if(ov)ov.classList.remove('open');if(d.checkoutUrl)location.href=d.checkoutUrl;else alert('Fehler: '+(d.error||'Unbekannter Fehler'));})
   .catch(function(err){if(ov)ov.classList.remove('open');alert('Fehler: '+err.message);});
 }
@@ -588,7 +590,7 @@ function submitWaitlist(type){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({type:type,vorname:vn,nachname:nn,email:em,nachricht:msg,datum:new Date().toLocaleDateString('de-DE')})
   })
-  .then(function(r){return r.json();})
+  .then(function(r){var ct=r.headers.get('content-type')||'';if(!ct.includes('json'))throw new Error('Server nicht erreichbar — bitte nochmal versuchen.');return r.json();})
   .then(function(d){
     if(d.success){
       var formEl=document.getElementById(type==='event'?'ev-wl-form':'ret-wl-form');
